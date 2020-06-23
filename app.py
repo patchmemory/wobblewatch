@@ -1,10 +1,16 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from sklearn.linear_model import LinearRegression 
 import scipy.stats
-from WobbleWatch.RiskMeter import RiskMeter
+import sys, os
+from datetime import date, timedelta
+sys.path.append(os.path.abspath("code/python"))
+from RiskMeter import RiskMeter
+
 
 def welcome():
     st.title("WobbleWatch")
@@ -48,21 +54,34 @@ def project_risk(falls, subject):
     slope, intercept, r_value, p_value, std_err = \
                 scipy.stats.linregress(x=falls['Day'],y=falls[subject])
 
-    plt.title("Stumble Summary")
-    ax = sns.regplot(x = falls["Day"], y = falls[subject],scatter_kws={'s':231})
-    plt.ylabel("Total Stumbles")
-    plt.xlabel("Day")
-    plt.ylim(bottom=0)
-    plt.xticks([-3,-2,-1,0])
-    xlims = ax.get_xlim()
-    new_x = np.arange(xlims[0], xlims[1],(xlims[1]-xlims[0])/100.)
-    ax.plot(new_x, intercept + slope *  new_x, color='c', linestyle='-', lw = 5)
-
-    plt.savefig("assets/projection.png")
-
     proj_risk = intercept
     if proj_risk < 0:
         proj_risk = 0
+
+    xt = [-3, -2, -1, 0]
+    dn = falls["Day"]
+    today = date.today()
+    xd = []
+    for i in range(len(xt)):
+        _d = today - timedelta(days=i)
+        xd.append(_d)
+
+    fig, ax = plt.subplots()
+    ax.set_title("Stumble Summary", size=16)
+    #ax = sns.regplot(x = falls["Day"], y = falls[subject],scatter_kws={'s':231})
+    ax.bar(falls["Day"], falls[subject])
+    #plt.bar(xt, falls[subject])
+    ax.set_ylabel("Total Stumbles", size=16)
+    ax.set_xlabel("Date", size=16)
+    ax.set_xticks(xt)
+    new_x = np.arange(xt[0], xt[-1],(xt[-1]-xt[0])/100.)
+    ymax = max(proj_risk, max(falls[subject]))
+    ax.set_ylim(bottom=0, top=ymax + 1)
+    ax.bar(0, intercept)
+    ax.plot(new_x, intercept + slope *  new_x, color='c', linestyle='-', lw = 5)
+    ax.set_xticklabels(xd)
+
+    plt.savefig("web/assets/projection.png")
 
     text_lines = []
     text_lines.append("Your risk level is %s" % risk_category(proj_risk))
@@ -73,13 +92,14 @@ def project_risk(falls, subject):
 
 welcome()
 falls = load_data()
-subject = st.selectbox("Enter today's data (for now choose a subject)", falls.columns[1:])
+#subject = st.selectbox("Enter today's data (for now choose a subject)", falls.columns[1:])
+subject = st.sidebar.selectbox("Enter today's data (for now choose a subject)", falls.columns[1:])
 
 proj_risk, text_lines = project_risk(falls,subject)
 
 val_max = 10
 rm = RiskMeter(proj_risk / val_max)
 
-st.image("assets/meter.png", use_column_width = True)
+st.image("web/assets/meter.png", use_column_width = True)
 for line in text_lines: st.markdown("<center>" + line + "</center>", unsafe_allow_html = True)
-st.image("assets/projection.png", use_column_width = True)
+st.image("web/assets/projection.png", use_column_width = True)

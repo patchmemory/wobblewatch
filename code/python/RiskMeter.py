@@ -14,7 +14,7 @@ class RiskMeter:
 
     def __init__(self, val, val_max = 1):
         self.val = val
-        self.fname='assets/meter.png'
+        self.fname='web/assets/meter.png'
 
         self.cat_names = [  'Very\nLow',
                             'Low',
