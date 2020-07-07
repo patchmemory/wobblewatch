@@ -1,5 +1,5 @@
 # WobbleWatch
-WobbleWatch is a prototype app designed to provide daily feedback to elderly users at risk of falling using data that could be collected from a cell phone. An active instance of the app can be found at http://184.72.128.43:8501. 
+WobbleWatch is a prototype app designed to provide daily feedback to elderly users at risk of falling using data that could be collected from a cell phone. An active instance of the app can be found at http://wobblewatch.xyz. 
 
 ## Overview
 Wobblewatch identifies "stumble" events and summarizes them on a daily basis as feedback for the user. These events are identified using either a CNN, a CNN-LSTM, or a more simple classifier. Jupyter was used for EDA and training, and the associated files can be found in `notebooks`.
