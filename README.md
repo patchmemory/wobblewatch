@@ -10,5 +10,8 @@ WobbleWatch detects "stumble" events using data from the enhanced SisFall datase
 ## Deployment Data
 While it is not a proper way to validate the model, for the sake of showing the use case, I have utilized the Long-term Movement Monitoring database from Physionet. One can utilize the LTMM notebook for this found in `code/notebooks`.
 
+## App
+The app is a simple prototype for the moment. It can be run locally using streamlit as `streamlit run app.py`.
+
 ## References
 Model design and training drew directly from work reported in *A novel hybrid deep neural network to predict pre-impact fall for older people based on wearable inertial sensors* by Xiaoqun Yu, Hai Qiu and Shuping Xiong published in Frontiers in Bioenginerring and Biotechnology, February, 2020 (https://doi.org/10.3389/fbioe.2020.00063).
