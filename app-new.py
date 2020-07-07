@@ -16,9 +16,6 @@ def welcome():
     st.title("WobbleWatch")
     st.text("Your daily fall risk assessment.")
 
-def disclaim():
-    st.markdown("Subjects are examples from the PhysioNet Long-Term Movement Monitoring Database. This data-set contains 3-day long data, and the dates shown above do not reflect the actual date of data collected but are just projected back from today to make this example more realistic.")
-
 def load_data():
     _f = np.array([[-3,-2,-1], [4,1,1], [2,1,5], [3,5,7]])
     _f = _f.transpose()
@@ -95,7 +92,7 @@ def project_risk(falls, subject):
 welcome()
 falls = load_data()
 #subject = st.selectbox("Enter today's data (for now choose a subject)", falls.columns[1:])
-subject = st.sidebar.selectbox("Choose a subject", falls.columns[1:])
+subject = st.sidebar.selectbox("Enter today's data (for now choose a subject)", falls.columns[1:])
 
 proj_risk, text_lines = project_risk(falls,subject)
 
@@ -105,4 +102,3 @@ rm = RiskMeter(proj_risk / val_max)
 st.image("web/assets/meter.png", use_column_width = True)
 for line in text_lines: st.markdown("<center>" + line + "</center>", unsafe_allow_html = True)
 st.image("web/assets/projection.png", use_column_width = True)
-disclaim()
