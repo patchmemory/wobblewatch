@@ -13,7 +13,13 @@ ALPHA_METER = 0.9
 class RiskMeter:
 
     def __init__(self, val, val_max = 1):
-        self.val = val
+        if val < 0:
+            self.val = 0
+        elif val > val_max:
+            self.val = val_max
+        else:
+            self.val = val
+        
         self.fname='web/assets/meter.png'
 
         self.cat_names = [  'Very\nLow',

@@ -7,6 +7,7 @@ import matplotlib.dates as mdates
 from sklearn.linear_model import LinearRegression 
 import scipy.stats
 import sys, os
+import pickle
 from datetime import date, timedelta
 sys.path.append(os.path.abspath("code/python"))
 from RiskMeter import RiskMeter
@@ -20,10 +21,10 @@ def disclaim():
     st.markdown("Subjects are examples from the PhysioNet Long-Term Movement Monitoring Database. This data-set contains 3-day long data, and the dates shown above do not reflect the actual date of data collected but are just projected back from today to make this example more realistic.")
 
 def load_data():
-    _f = np.array([[-3,-2,-1], [4,1,1], [2,1,5], [3,5,7]])
-    _f = _f.transpose()
-    _c = ["Day", "Adult 1", "Adult 2", "Adult 3"]
-    return pd.DataFrame(_f, columns = _c)
+    fname = os.path.abspath("data/physionet_results_by_name.pik")
+    with open(fname, 'rb') as handle:
+        d = pickle.load(handle)
+    return d
 
 
 def risk_category(risk):
@@ -38,17 +39,17 @@ def risk_category(risk):
     else:
         return "Very High!"
 
-def risk_change(slope):
+def risk_change(slope, proj_stumbles):
     text = ""
-    if slope > 1:
+    if slope > 0.5:
         text = "Your risk is growing! You should [intervention]"
-    elif slope < 1:
+    elif slope < -0.5:
         text = "Your risk is dropping! Keep up the good work!"
     else:
         text = "Your risk is not changing much."
-        if proj_risk < 3:
+        if proj_stumbles < 3:
             text += " That's great!"
-        elif proj_risk < 5:
+        elif proj_stumbles < 5:
             text += " That's okay, but you could use some improvement."
         else:
             text += " Be careful today."
@@ -56,14 +57,13 @@ def risk_change(slope):
 
 def project_risk(falls, subject):
     slope, intercept, r_value, p_value, std_err = \
-                scipy.stats.linregress(x=falls['Day'],y=falls[subject])
+                scipy.stats.linregress(x=falls[:,0],y=falls[:,1])
 
-    proj_risk = intercept
-    if proj_risk < 0:
-        proj_risk = 0
+    proj_stumbles = intercept
+    if proj_stumbles < 0:
+        proj_stumbles = 0
 
     xt = [-3, -2, -1, 0]
-    dn = falls["Day"]
     today = date.today()
     xd = []
     for i in range(len(xt)):
@@ -72,12 +72,12 @@ def project_risk(falls, subject):
 
     fig, ax = plt.subplots()
     ax.set_title("Stumble Summary", size=16)
-    ax.bar(falls["Day"], falls[subject])
+    ax.bar(falls[:,0], falls[:,1])
     ax.set_ylabel("Total Stumbles", size=16)
     ax.set_xlabel("Date", size=16)
     ax.set_xticks(xt)
     new_x = np.arange(xt[0], xt[-1],(xt[-1]-xt[0])/100.)
-    ymax = max(proj_risk, max(falls[subject]))
+    ymax = max(proj_stumbles, max(falls[:,1]))
     ax.set_ylim(bottom=0, top=ymax + 1)
     ax.bar(0, intercept)
     ax.plot(new_x, intercept + slope *  new_x, color='c', linestyle='-', lw = 5)
@@ -86,21 +86,52 @@ def project_risk(falls, subject):
     plt.savefig("web/assets/projection.png")
 
     text_lines = []
-    text_lines.append("Your risk level is %s" % risk_category(proj_risk))
-    text_lines.append("Your most recent trend suggest %i stumbles today." % proj_risk)
-    text_lines.append(risk_change(slope))
-    return proj_risk, text_lines
+    text_lines.append("Your risk level is %s" % risk_category(proj_stumbles))
+    text_lines.append("Your most recent trend suggests %i stumbles today." % proj_stumbles)
+    text_lines.append(risk_change(slope, proj_stumbles))
+    return proj_stumbles, text_lines
 
+
+def relative_risk(subject, results, thresh):
+    N = { 'F': [], 'C': []}
+    for _r in results:
+        if _r[0] == 'C':
+            N['C'].append(len(results[_r][:,2][results[_r][:,2] > thresh]))
+        elif _r[0] == 'F':
+            N['F'].append(len(results[_r][:,2][results[_r][:,2] > thresh]))
+    ARF = np.mean(N['F'])
+    ARC = np.mean(N['C']) 
+    RR = ARC/ARF
+    return ARF, ARC, RR
+
+def n_stumbles_day(subject, results, thresh, day):
+    mask1 = results[subject][:,2] > thresh
+    mask2 = results[subject][:,0] > 24*(day-1)
+    mask3 = results[subject][:,0] < 24*day
+    mask = mask1 & mask2 & mask3
+    return len(results[subject][mask])
+
+def individual_stumbles(subject, results, thresh, ARF):
+    days = [1,2,3]
+    stumbles = []
+    for day in days:
+        _ns = n_stumbles_day(subject, results, thresh, day)
+        stumbles.append([-day, _ns])
+    return np.array(stumbles)
 
 welcome()
-falls = load_data()
-#subject = st.selectbox("Enter today's data (for now choose a subject)", falls.columns[1:])
-subject = st.sidebar.selectbox("Choose a subject", falls.columns[1:])
+results = load_data()
+names = list(results.keys())
+subject = st.sidebar.selectbox("Choose a subject (F's are known fallers)", names[::-1])
+thresh = st.sidebar.slider("Threshold", min_value=0.5, max_value=0.8, value=0.8)
 
-proj_risk, text_lines = project_risk(falls,subject)
+ARF, ARC, RR = relative_risk(subject, results, thresh)
+st.sidebar.text("Relative Risk = %5.3f" % RR)
 
-val_max = 10
-rm = RiskMeter(proj_risk / val_max)
+stumbles = individual_stumbles(subject, results, thresh, ARF)
+proj_stumbles, text_lines = project_risk(stumbles,subject)
+tune = 5 # adhoc tuning parameter for sensitivity of RiskMeter
+rm = RiskMeter(proj_stumbles/ ARF*tune)
 
 st.image("web/assets/meter.png", use_column_width = True)
 for line in text_lines: st.markdown("<center>" + line + "</center>", unsafe_allow_html = True)

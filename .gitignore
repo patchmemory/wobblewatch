@@ -3,3 +3,5 @@ data/
 results/
 __pycache__
 .ipynb_checkpoints
+physionet_results_by_name.pik
+physionet_results.pik
